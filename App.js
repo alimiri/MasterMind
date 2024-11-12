@@ -7,6 +7,7 @@ const Mastermind = () => {
   const [feedback, setFeedback] = useState(Array(11).fill({ correct: 0, exact: 0 }));
   const [target, setTarget] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
+  const [isDigitsRevealed, setIsDigitsRevealed] = useState(false); // To track if digits are revealed
 
   // Array of refs for each cell
   const cellRefs = useRef(Array(11).fill().map(() => Array(5).fill().map(() => React.createRef())));
@@ -21,11 +22,12 @@ const Mastermind = () => {
 
   const checkRow = (rowIndex) => {
     const row = grid[rowIndex];
-    let correct = 0, exact = 0;
+    let exact = 0;
+    let correct = 0;
     const targetUsed = Array(5).fill(false);
     const rowUsed = Array(5).fill(false);
 
-    // Count exact matches
+    // Count exact matches (right number, right position)
     row.forEach((val, i) => {
       if (val === target[i]) {
         exact++;
@@ -47,19 +49,39 @@ const Mastermind = () => {
       }
     });
 
-    // Update feedback for the row
+    // Update feedback for the row with both exact and correct counts
     setFeedback(prevFeedback => {
       const updatedFeedback = [...prevFeedback];
       updatedFeedback[rowIndex] = { correct, exact };
       return updatedFeedback;
     });
 
+    // If the user has guessed the correct number
     if (exact === 5) {
-      Alert.alert("Congratulations, you won!");
+      setIsDigitsRevealed(true); // Reveal the digits before the dialog
+      Alert.alert("Congratulations, you won!", "Click OK to start a new game.", [
+        { text: "OK", onPress: startNewGame }
+      ]);
     } else if (rowIndex === 10) {
-      Alert.alert("Game over, you lost!");
+      setIsDigitsRevealed(true); // Reveal the digits before the dialog
+      Alert.alert("Game over, you lost!", "Click OK to start a new game.", [
+        { text: "OK", onPress: startNewGame }
+      ]);
     } else {
       setActiveRow(prev => prev + 1); // Move to next row automatically
+    }
+  };
+
+  const startNewGame = () => {
+    const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
+    setTarget(generateTarget); // Generate a new target number
+    setGrid(Array(11).fill().map(() => Array(5).fill(''))); // Clear the grid
+    setFeedback(Array(11).fill({ correct: 0, exact: 0 })); // Reset the feedback
+    setIsDigitsRevealed(false); // Hide the digits again with '*'
+    setActiveRow(1); // Start from the first row
+    const firstCell = cellRefs.current[1][0].current;
+    if (firstCell) {
+      firstCell.focus(); // Focus the first cell in the new game
     }
   };
 
@@ -72,6 +94,17 @@ const Mastermind = () => {
     // If row is complete, calculate the result and move to the next row
     if (newGrid[activeRow].every(cell => cell !== '')) {
       checkRow(activeRow);
+
+      // Move to the first cell of the next row after calculating the result
+      setTimeout(() => {
+        const nextRow = activeRow + 1;
+        if (nextRow <= 10) {
+          const nextCell = cellRefs.current[nextRow][0].current;
+          if (nextCell) {
+            nextCell.focus(); // Focus the first cell of the next row
+          }
+        }
+      }, 0);
     } else {
       // Move to the next cell after entering a value
       if (index < 4 && value !== '') {
@@ -85,6 +118,30 @@ const Mastermind = () => {
     }
   };
 
+  const handleKeyPress = (e, rowIndex, cellIndex) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      const newGrid = [...grid];
+
+      // If the current cell is not empty, delete its content
+      if (newGrid[rowIndex][cellIndex] !== '') {
+        newGrid[rowIndex][cellIndex] = '';
+        setGrid(newGrid);
+      } else if (cellIndex > 0 && newGrid[rowIndex][cellIndex - 1] !== '') {
+        // If the current cell is empty and it's not the first one, move to the previous cell
+        newGrid[rowIndex][cellIndex - 1] = '';
+        setGrid(newGrid);
+
+        // Focus on the previous cell
+        setTimeout(() => {
+          const prevCell = cellRefs.current[rowIndex][cellIndex - 1].current;
+          if (prevCell) {
+            prevCell.focus();
+          }
+        }, 0);
+      }
+    }
+  };
+
   const renderRow = (rowIndex) => {
     return (
       <View key={rowIndex} style={styles.rowContainer}>
@@ -92,18 +149,19 @@ const Mastermind = () => {
           <TextInput
             key={index}
             style={[styles.cell, rowIndex === 0 && styles.randomDigit]} // Add specific style for row 0
-            value={rowIndex === 0 ? target[index] : cell} // Show random digits in row 0
+            value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell} // Show '*' in row 0 initially, reveal digits later
             keyboardType="numeric"
             onChangeText={(text) => handleInputChange(index, text)}
             editable={rowIndex === activeRow && rowIndex !== 0} // Only allow input for rows below row 0
             maxLength={1}
             ref={cellRefs.current[rowIndex][index]} // Assign ref to each cell for focus management
+            onKeyPress={(e) => handleKeyPress(e, rowIndex, index)} // Handle backspace key press
           />
         ))}
         {rowIndex > 0 && (
           <View style={styles.feedbackContainer}>
-            <Text>{feedback[rowIndex].exact} Exact</Text>
-            <Text>{feedback[rowIndex].correct} Correct</Text>
+            <Text>Correct: {feedback[rowIndex].correct}</Text>
+            <Text>Exact: {feedback[rowIndex].exact}</Text>
           </View>
         )}
       </View>
