@@ -1,5 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, Alert, StyleSheet, Text, TextInput } from 'react-native';
+import { FirebaseRemoteConfig } from '@react-native-firebase/remote-config';
+import firebase from 'firebase/app';
+import 'firebase/auth';
+import 'firebase/firestore';
+import { API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID, MEASUREMENT_ID } from '@env';
+
+const fetchConfig = async (setCellBackgroundColor) => {
+  try {
+    await FirebaseRemoteConfig().fetchAndActivate();
+    const cellBackgroundColor = FirebaseRemoteConfig().getValue('cellBackgroundColor').asString();
+    console.log('Cell Background Color:', cellBackgroundColor);
+    setCellBackgroundColor(cellBackgroundColor);
+  } catch (error) {
+    console.error('Error fetching remote config:', error);
+  }
+};
+
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: API_KEY,
+  authDomain: AUTH_DOMAIN,
+  projectId: PROJECT_ID,
+  storageBucket: STORAGE_BUCKET,
+  messagingSenderId: MESSAGING_SENDER_ID,
+  appId: APP_ID,
+  measurementId: MEASUREMENT_ID
+};
+
+// Initialize Firebase App
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+} else {
+  firebase.app(); // If already initialized
+}
 
 const Mastermind = () => {
   const [activeRow, setActiveRow] = useState(1);
@@ -8,6 +42,7 @@ const Mastermind = () => {
   const [target, setTarget] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isDigitsRevealed, setIsDigitsRevealed] = useState(false);
+  const [cellBackgroundColor, setCellBackgroundColor] = useState('#FFB6C1'); // Default color
 
   const cellRefs = useRef(Array(11).fill().map(() => Array(5).fill().map(() => React.createRef())));
 
@@ -16,6 +51,7 @@ const Mastermind = () => {
     const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
     setTarget(generateTarget);
     setIsGameStarted(true);
+    fetchConfig(setCellBackgroundColor); // Fetch the config when the game starts
   }, [isGameStarted]);
 
   const checkRow = (rowIndex) => {
@@ -135,7 +171,7 @@ const Mastermind = () => {
         {grid[rowIndex].map((cell, index) => (
           <TextInput
           key={index}
-          style={[styles.cell, rowIndex === 0 && styles.randomDigit]} // Add specific style for row 0
+          style={[styles.cell, { backgroundColor: rowIndex === 0 ? '#3CB371' : cellBackgroundColor }]} // Apply remote config color
           value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell} // Show '*' in row 0 initially, reveal digits later
           keyboardType="numeric"
           onChangeText={(text) => handleInputChange(index, text)}
@@ -143,9 +179,8 @@ const Mastermind = () => {
           maxLength={1}
           ref={cellRefs.current[rowIndex][index]} // Assign ref to each cell for focus management
           onKeyPress={(e) => handleKeyPress(e, rowIndex, index)} // Handle backspace key press
-        />
+        />))}
 
-        ))}
         {rowIndex > 0 && (
           <View style={styles.feedbackContainer}>
             <Text>Correct: {feedback[rowIndex].correct}</Text>
@@ -193,7 +228,6 @@ const styles = StyleSheet.create({
   cell: {
     borderWidth: 2,
     borderColor: '#ccc',
-    backgroundColor: '#FFB6C1', // light pink
     padding: 10,
     width: 40,
     height: 40,
@@ -206,13 +240,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
-    textShadowColor: '#000', // Shadow color for text
-    textShadowOffset: { width: 1, height: 1 }, // Offset for the text shadow
-    textShadowRadius: 2, // Blur radius for the text shadow
-  },
-  randomDigit: {
-    backgroundColor: '#3CB371', // medium sea green
-    borderColor: '#bbb',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   feedbackContainer: {
     marginLeft: 10,
