@@ -171,14 +171,18 @@ const Mastermind = () => {
         }
       }, 0);
     } else {
-      if (index < 4 && value !== '') {
-        setTimeout(() => {
-          const nextCell = cellRefs.current[activeRow][index + 1].current;
-          if (nextCell) {
-            nextCell.focus();
+      setTimeout(() => {
+        for(let i = 0; i < 5; i++) {
+          let newIndex = (index + i) % 5;
+          if(newGrid[activeRow][newIndex] === '') {
+            const nextCell = cellRefs.current[activeRow][newIndex].current;
+            if (nextCell) {
+              nextCell.focus();
+            }
+            break;
           }
-        }, 0);
-      }
+        }
+      }, 0);
     }
   };
 
