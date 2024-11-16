@@ -207,9 +207,8 @@ const Mastermind = () => {
 
         {rowIndex > 0 && (
           <View style={styles.feedbackContainer}>
-            <Text style={styles.feedbackText}>
-              {feedback[rowIndex].exact} Exact, {feedback[rowIndex].correct} Correct
-            </Text>
+            <Text>Correct: {feedback[rowIndex].correct}</Text>
+            <Text>Exact: {feedback[rowIndex].exact}</Text>
           </View>
         )}
       </View>
@@ -217,44 +216,52 @@ const Mastermind = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.gameContainer}>
-        {Array.from({ length: 11 }).map((_, index) => renderRow(index))}
-      </View>
-    </SafeAreaView>
+    <View style={styles.innerContainer}>
+      {grid.map((_, rowIndex) => renderRow(rowIndex))}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#e0f7e0',
   },
-  gameContainer: {
-    width: '80%',
+  container: {
+    padding: 20,
+    borderWidth: 8,
+    borderColor: '#333',
+    borderRadius: 15,
+    backgroundColor: '#e0f7e0',
+    margin: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  innerContainer: {
+    padding: 10,
   },
   rowContainer: {
     flexDirection: 'row',
-    marginVertical: 5,
+    justifyContent: 'center',
+    marginBottom: 10,
+    alignItems: 'center',
   },
   cell: {
+    borderWidth: 2,
+    borderColor: '#ccc',
+    padding: 10,
     width: 50,
     height: 50,
-    marginRight: 5,
     textAlign: 'center',
-    fontSize: 24,
-    borderWidth: 1,
-    borderColor: 'gray',
+    fontSize: 20,
+    borderRadius: 5,
   },
   feedbackContainer: {
-    marginLeft: 10,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  feedbackText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    marginLeft: 20,
+    marginTop: 5,
   },
 });
 
