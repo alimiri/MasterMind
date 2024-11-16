@@ -1,41 +1,61 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, Alert, StyleSheet, Text, TextInput } from 'react-native';
-import { FirebaseRemoteConfig } from '@react-native-firebase/remote-config';
-import firebase from 'firebase/app';
-import 'firebase/auth';
-import 'firebase/firestore';
-import { API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID, MEASUREMENT_ID } from '@env';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getDatabase, ref, set, get, child } from 'firebase/database';
 
-const fetchConfig = async (setCellBackgroundColor) => {
-  try {
-    await FirebaseRemoteConfig().fetchAndActivate();
-    const cellBackgroundColor = FirebaseRemoteConfig().getValue('cellBackgroundColor').asString();
-    console.log('Cell Background Color:', cellBackgroundColor);
-    setCellBackgroundColor(cellBackgroundColor);
-  } catch (error) {
-    console.error('Error fetching remote config:', error);
-  }
-};
+import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID, MEASUREMENT_ID } from '@env';
 
 // Initialize Firebase
 const firebaseConfig = {
-  apiKey: API_KEY,
-  authDomain: AUTH_DOMAIN,
-  projectId: PROJECT_ID,
-  storageBucket: STORAGE_BUCKET,
-  messagingSenderId: MESSAGING_SENDER_ID,
-  appId: APP_ID,
-  measurementId: MEASUREMENT_ID
+  apiKey: FIREBASE_API_KEY,
+  authDomain: FIREBASE_AUTH_DOMAIN,
+  projectId: FIREBASE_PROJECT_ID,
+  storageBucket: FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: FIREBASE_GCM_SENDER_ID,
+  appId: FIREBASE_APP_ID,
 };
 
-// Initialize Firebase App
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-} else {
-  firebase.app(); // If already initialized
-}
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Example: Writing to the database
+const writeData = async () => {
+  try {
+    // Use 'ref' to specify the location in the Realtime Database
+    const userRef = ref(db, 'users/1');
+    await set(userRef, {
+      name: 'John Doe',
+      age: 30,
+    });
+    console.log('Data written successfully');
+  } catch (error) {
+    console.error('Error writing to Realtime Database: ', error);
+  }
+};
+
+// Example: Reading from the database
+const readData = async () => {
+  try {
+    // Use 'ref' to specify the location in the Realtime Database
+    const userRef = ref(db, 'users/1');
+    const snapshot = await get(userRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      console.log(data);
+    } else {
+      console.log('No data available');
+    }
+  } catch (error) {
+    console.error('Error reading from Realtime Database: ', error);
+  }
+};
 
 const Mastermind = () => {
+  writeData();
+  readData();
+
   const [activeRow, setActiveRow] = useState(1);
   const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
   const [feedback, setFeedback] = useState(Array(11).fill({ correct: 0, exact: 0 }));
@@ -48,10 +68,10 @@ const Mastermind = () => {
 
   useEffect(() => {
     if (isGameStarted) return;
+
     const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
     setTarget(generateTarget);
     setIsGameStarted(true);
-    fetchConfig(setCellBackgroundColor); // Fetch the config when the game starts
   }, [isGameStarted]);
 
   const checkRow = (rowIndex) => {
@@ -81,7 +101,7 @@ const Mastermind = () => {
       }
     });
 
-    setFeedback(prevFeedback => {
+    setFeedback((prevFeedback) => {
       const updatedFeedback = [...prevFeedback];
       updatedFeedback[rowIndex] = { correct, exact };
       return updatedFeedback;
@@ -89,16 +109,16 @@ const Mastermind = () => {
 
     if (exact === 5) {
       setIsDigitsRevealed(true);
-      Alert.alert("Congratulations, you won!", "Click OK to start a new game.", [
-        { text: "OK", onPress: startNewGame }
+      Alert.alert('Congratulations, you won!', 'Click OK to start a new game.', [
+        { text: 'OK', onPress: startNewGame },
       ]);
     } else if (rowIndex === 10) {
       setIsDigitsRevealed(true);
-      Alert.alert("Game over, you lost!", "Click OK to start a new game.", [
-        { text: "OK", onPress: startNewGame }
+      Alert.alert('Game over, you lost!', 'Click OK to start a new game.', [
+        { text: 'OK', onPress: startNewGame },
       ]);
     } else {
-      setActiveRow(prev => prev + 1);
+      setActiveRow((prev) => prev + 1);
     }
   };
 
@@ -121,7 +141,7 @@ const Mastermind = () => {
     newGrid[activeRow][index] = value;
     setGrid(newGrid);
 
-    if (newGrid[activeRow].every(cell => cell !== '')) {
+    if (newGrid[activeRow].every((cell) => cell !== '')) {
       checkRow(activeRow);
 
       setTimeout(() => {
@@ -170,21 +190,26 @@ const Mastermind = () => {
       <View key={rowIndex} style={styles.rowContainer}>
         {grid[rowIndex].map((cell, index) => (
           <TextInput
-          key={index}
-          style={[styles.cell, { backgroundColor: rowIndex === 0 ? '#3CB371' : cellBackgroundColor }]} // Apply remote config color
-          value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell} // Show '*' in row 0 initially, reveal digits later
-          keyboardType="numeric"
-          onChangeText={(text) => handleInputChange(index, text)}
-          editable={rowIndex === activeRow && rowIndex !== 0} // Only allow input for rows below row 0
-          maxLength={1}
-          ref={cellRefs.current[rowIndex][index]} // Assign ref to each cell for focus management
-          onKeyPress={(e) => handleKeyPress(e, rowIndex, index)} // Handle backspace key press
-        />))}
+            key={index}
+            style={[
+              styles.cell,
+              { backgroundColor: rowIndex === 0 ? '#3CB371' : cellBackgroundColor },
+            ]}
+            value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
+            keyboardType="numeric"
+            onChangeText={(text) => handleInputChange(index, text)}
+            editable={rowIndex === activeRow && rowIndex !== 0}
+            maxLength={1}
+            ref={cellRefs.current[rowIndex][index]}
+            onKeyPress={(e) => handleKeyPress(e, rowIndex, index)}
+          />
+        ))}
 
         {rowIndex > 0 && (
           <View style={styles.feedbackContainer}>
-            <Text>Correct: {feedback[rowIndex].correct}</Text>
-            <Text>Exact: {feedback[rowIndex].exact}</Text>
+            <Text style={styles.feedbackText}>
+              {feedback[rowIndex].exact} Exact, {feedback[rowIndex].correct} Correct
+            </Text>
           </View>
         )}
       </View>
@@ -192,60 +217,44 @@ const Mastermind = () => {
   };
 
   return (
-    <View style={styles.innerContainer}>
-      {grid.map((_, rowIndex) => renderRow(rowIndex))}
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.gameContainer}>
+        {Array.from({ length: 11 }).map((_, index) => renderRow(index))}
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#e0f7e0',
-  },
   container: {
-    padding: 20,
-    borderWidth: 8,
-    borderColor: '#333',
-    borderRadius: 15,
-    backgroundColor: '#e0f7e0',
-    margin: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  innerContainer: {
-    padding: 10,
+  gameContainer: {
+    width: '80%',
   },
   rowContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 10,
-    alignItems: 'center',
+    marginVertical: 5,
   },
   cell: {
-    borderWidth: 2,
-    borderColor: '#ccc',
-    padding: 10,
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
+    marginRight: 5,
     textAlign: 'center',
-    fontSize: 20,
-    marginRight: 10,
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    textShadowColor: '#000',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 24,
+    borderWidth: 1,
+    borderColor: 'gray',
   },
   feedbackContainer: {
     marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  feedbackText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
