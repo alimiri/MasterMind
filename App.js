@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, SafeAreaView, Alert, StyleSheet, Text, TextInput } from 'react-native';
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getDatabase, ref, set, get, child } from 'firebase/database';
+import { getDatabase, ref, set, get, onValue  } from 'firebase/database';
 
-import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID, MEASUREMENT_ID } from '@env';
+import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID } from '@env';
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -20,10 +18,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Example: Writing to the database
+const checkConnection = () => {
+  const connectedRef = ref(db, '.info/connected');
+  onValue(connectedRef, (snapshot) => {
+    const isConnected = snapshot.val();
+    if (isConnected) {
+      console.log('Connected to Firebase Realtime Database');
+    } else {
+      console.log('Not connected to Firebase Realtime Database');
+    }
+  });
+};
+
 const writeData = async () => {
   try {
-    // Use 'ref' to specify the location in the Realtime Database
     const userRef = ref(db, 'users/1');
     await set(userRef, {
       name: 'John Doe',
@@ -31,14 +39,13 @@ const writeData = async () => {
     });
     console.log('Data written successfully');
   } catch (error) {
-    console.error('Error writing to Realtime Database: ', error);
+    console.error('Error writing to Realtime Database:', error.message);
+    console.log('Stack Trace:', error.stack);
   }
 };
 
-// Example: Reading from the database
 const readData = async () => {
   try {
-    // Use 'ref' to specify the location in the Realtime Database
     const userRef = ref(db, 'users/1');
     const snapshot = await get(userRef);
     if (snapshot.exists()) {
@@ -48,13 +55,23 @@ const readData = async () => {
       console.log('No data available');
     }
   } catch (error) {
-    console.error('Error reading from Realtime Database: ', error);
+    console.error('Error reading from Realtime Database:', error.message);
+    console.log('Stack Trace:', error.stack);
   }
 };
 
 const Mastermind = () => {
-  writeData();
-  readData();
+  useEffect(() => {
+    //checkConnection();
+    const fetchData = async () => {
+      // Write and then read data sequentially
+      await writeData();
+      await readData();
+    };
+
+    fetchData();
+  }, []); // Empty dependency array ensures this only runs once after the component mounts
+
 
   const [activeRow, setActiveRow] = useState(1);
   const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
