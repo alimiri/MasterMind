@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, onValue  } from 'firebase/database';
+import Firework from './firework';
 
 import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID } from '@env';
 
@@ -80,6 +81,8 @@ const DismissKeyboard = ({ children }) => (
 );
 
 const Mastermind = () => {
+  const fireworkRef = useRef(); // Create a ref to control the Firework component
+
   const [activeRow, setActiveRow] = useState(1);
   const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
   const [feedback, setFeedback] = useState(Array(11).fill({ correct: undefined, exact: undefined }));
@@ -153,6 +156,7 @@ const Mastermind = () => {
 
     if (exact === 5) {
       setIsDigitsRevealed(true);
+      fireworkRef.current.setShowFireworks(true);
       Alert.alert('Congratulations, you won!', 'Click OK to start a new game.', [
         { text: 'OK', onPress: startNewGame },
       ]);
@@ -167,6 +171,7 @@ const Mastermind = () => {
   };
 
   const startNewGame = () => {
+    fireworkRef.current.setShowFireworks(false);
     const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
     setTarget(generateTarget);
     setGrid(Array(11).fill().map(() => Array(5).fill('')));
@@ -290,25 +295,30 @@ const Mastermind = () => {
 
   return (
     <DismissKeyboard>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.innerContainer}>
-            {grid.map((_, rowIndex) => renderRow(rowIndex))}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <View style={{ flex: 1 }}>
+        <Firework ref={fireworkRef} />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <View style={styles.innerContainer}>
+              {grid.map((_, rowIndex) => renderRow(rowIndex))}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
     </DismissKeyboard>
   );
+
 };
 
 const outerContainerBackgroundCoor = '#ff0000';
 const innerContainerBackgroundCoor = '#e0f7e0';
-const shouldAddShadow = true;
 const exactBackgroundColor = '#00ff00';
 const correctBackgroundColor = '#ffff00';
+const shouldAddCellShadow = true;
+const shouldAddFontShadow = false;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -368,7 +378,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5, // Android shadow
     // Conditionally add shadow (e.g., for focused state)
-    ...(shouldAddShadow ? {
+    ...(shouldAddCellShadow ? {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.5, // Higher opacity for shadow visibility
@@ -377,19 +387,11 @@ const styles = StyleSheet.create({
     } : {}),
 
     // Font shadow properties
-    textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
-    textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
-    textShadowRadius: 2, // Blur radius
-  },
-  feedbackContainer: {
-    flexDirection: 'row',
-    marginLeft: 20,
-    marginTop: 5,
-    backgroundColor: '#fff',
-    padding: 5,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
+    ...(shouldAddFontShadow ? {
+        textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
+      textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
+      textShadowRadius: 2, // Blur radius
+    } : {}),
   },
 });
 
