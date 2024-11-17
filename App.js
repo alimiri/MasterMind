@@ -175,7 +175,7 @@ const Mastermind = () => {
     const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
     setTarget(generateTarget);
     setGrid(Array(11).fill().map(() => Array(5).fill('')));
-    setFeedback(Array(11).fill({ correct: 0, exact: 0 }));
+    setFeedback(Array(11).fill({ correct: undefined, exact: undefined }));
     setIsDigitsRevealed(false);
     setActiveRow(1);
     const firstCell = cellRefs.current[1][0].current;
@@ -318,7 +318,7 @@ const innerContainerBackgroundCoor = '#e0f7e0';
 const exactBackgroundColor = '#00ff00';
 const correctBackgroundColor = '#ffff00';
 const shouldAddCellShadow = true;
-const shouldAddFontShadow = false;
+const shouldAddFontShadow = true;
 
 const styles = StyleSheet.create({
   safeArea: {
