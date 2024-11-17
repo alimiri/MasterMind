@@ -82,7 +82,7 @@ const DismissKeyboard = ({ children }) => (
 const Mastermind = () => {
   const [activeRow, setActiveRow] = useState(1);
   const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
-  const [feedback, setFeedback] = useState(Array(11).fill({ correct: 0, exact: 0 }));
+  const [feedback, setFeedback] = useState(Array(11).fill({ correct: undefined, exact: undefined }));
   const [target, setTarget] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isDigitsRevealed, setIsDigitsRevealed] = useState(false);
@@ -256,11 +256,33 @@ const Mastermind = () => {
         ))}
 
         {rowIndex > 0 && (
-          <View style={styles.feedbackContainer}>
-            <Text>Correct: {feedback[rowIndex].correct}</Text>
-            <Text>Exact: {feedback[rowIndex].exact}</Text>
-          </View>
+            <TextInput
+            key={grid[rowIndex].length}
+            style={[
+              styles.cell,
+              {
+                backgroundColor: exactBackgroundColor,
+              },
+            ]}
+            value={feedback[rowIndex].exact !== undefined ? String(feedback[rowIndex].exact) : ''}
+            editable={false}
+          />
         )}
+
+        {rowIndex > 0 && (
+            <TextInput
+            key={grid[rowIndex].length+1}
+            style={[
+              styles.cell,
+              {
+                backgroundColor: correctBackgroundColor,
+              },
+            ]}
+            value={feedback[rowIndex].correct !== undefined ? String(feedback[rowIndex].correct) : ''}
+            editable={false}
+          />
+        )}
+
       </View>
     );
   };
@@ -285,6 +307,8 @@ const Mastermind = () => {
 const outerContainerBackgroundCoor = '#ff0000';
 const innerContainerBackgroundCoor = '#e0f7e0';
 const shouldAddShadow = true;
+const exactBackgroundColor = '#00ff00';
+const correctBackgroundColor = '#ffff00';
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -351,8 +375,14 @@ const styles = StyleSheet.create({
       shadowRadius: 5,
       elevation: 10 // Stronger shadow on Android
     } : {}),
+
+    // Font shadow properties
+    textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
+    textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
+    textShadowRadius: 2, // Blur radius
   },
   feedbackContainer: {
+    flexDirection: 'row',
     marginLeft: 20,
     marginTop: 5,
     backgroundColor: '#fff',
