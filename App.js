@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, SafeAreaView, Alert, StyleSheet, Text, TextInput } from 'react-native';
+import {
+  View,
+  SafeAreaView,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, onValue  } from 'firebase/database';
 
 import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID } from '@env';
+
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -60,7 +73,30 @@ const readData = async () => {
   }
 };
 
+const DismissKeyboard = ({ children }) => (
+  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    {children}
+  </TouchableWithoutFeedback>
+);
+
 const Mastermind = () => {
+  const [activeRow, setActiveRow] = useState(1);
+  const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
+  const [feedback, setFeedback] = useState(Array(11).fill({ correct: 0, exact: 0 }));
+  const [target, setTarget] = useState([]);
+  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [isDigitsRevealed, setIsDigitsRevealed] = useState(false);
+  const [cellBackgroundColor, setCellBackgroundColor] = useState('#FFB6C1'); // Default color
+
+  const cellRefs = useRef(Array(11).fill().map(() => Array(5).fill().map(() => React.createRef())));
+
+  useEffect(() => {
+    if (!isGameStarted) {
+      const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
+      setTarget(generateTarget);
+      setIsGameStarted(true);
+    }
+  }, [isGameStarted]);
   useEffect(() => {
     //checkConnection();
     const fetchData = async () => {
@@ -73,15 +109,6 @@ const Mastermind = () => {
   }, []); // Empty dependency array ensures this only runs once after the component mounts
 
 
-  const [activeRow, setActiveRow] = useState(1);
-  const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
-  const [feedback, setFeedback] = useState(Array(11).fill({ correct: 0, exact: 0 }));
-  const [target, setTarget] = useState([]);
-  const [isGameStarted, setIsGameStarted] = useState(false);
-  const [isDigitsRevealed, setIsDigitsRevealed] = useState(false);
-  const [cellBackgroundColor, setCellBackgroundColor] = useState('#FFB6C1'); // Default color
-
-  const cellRefs = useRef(Array(11).fill().map(() => Array(5).fill().map(() => React.createRef())));
 
   useEffect(() => {
     if (isGameStarted) return;
@@ -214,7 +241,9 @@ const Mastermind = () => {
             key={index}
             style={[
               styles.cell,
-              { backgroundColor: rowIndex === 0 ? '#3CB371' : cellBackgroundColor },
+              {
+                backgroundColor: rowIndex === 0 ? '#3CB371' : cellBackgroundColor,
+              },
             ]}
             value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
             keyboardType="numeric"
@@ -236,24 +265,42 @@ const Mastermind = () => {
     );
   };
 
+
   return (
-    <View style={styles.innerContainer}>
-      {grid.map((_, rowIndex) => renderRow(rowIndex))}
-    </View>
+    <DismissKeyboard>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <View style={styles.innerContainer}>
+            {grid.map((_, rowIndex) => renderRow(rowIndex))}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </DismissKeyboard>
   );
 };
+
+const outerContainerBackgroundCoor = '#ff0000';
+const innerContainerBackgroundCoor = '#e0f7e0';
+const shouldAddShadow = true;
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#e0f7e0',
+    backgroundColor: outerContainerBackgroundCoor,
+  },
+  avoidingView: {
+    flex: 1,
   },
   container: {
-    padding: 20,
+    flex: 1,
+    padding: 10,
     borderWidth: 8,
     borderColor: '#333',
     borderRadius: 15,
-    backgroundColor: '#e0f7e0',
+    backgroundColor: innerContainerBackgroundCoor,
     margin: 10,
     shadowColor: '#000',
     shadowOffset: { width: 5, height: 5 },
@@ -262,27 +309,57 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   innerContainer: {
+    flex: 1,
     padding: 10,
+    alignItems: 'center',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 10,
   },
   rowContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between', // Space the columns evenly
     marginBottom: 10,
     alignItems: 'center',
+    width: '100%', // Ensure the row takes the full width of the container
+    paddingHorizontal: 5, // Adjust padding to prevent cutoff
   },
   cell: {
     borderWidth: 2,
     borderColor: '#ccc',
     padding: 10,
-    width: 50,
+    flex: 1, // Distribute the columns evenly
     height: 50,
     textAlign: 'center',
     fontSize: 20,
     borderRadius: 5,
+    marginHorizontal: 2, // Add space between columns
+    maxWidth: 50, // Ensure max width for each cell
+    // Optional shadow properties (only on iOS and Android)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5, // Android shadow
+    // Conditionally add shadow (e.g., for focused state)
+    ...(shouldAddShadow ? {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.5, // Higher opacity for shadow visibility
+      shadowRadius: 5,
+      elevation: 10 // Stronger shadow on Android
+    } : {}),
   },
   feedbackContainer: {
     marginLeft: 20,
     marginTop: 5,
+    backgroundColor: '#fff',
+    padding: 5,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
 });
 
