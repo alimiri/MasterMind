@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import NumberPicker from './NumberPicker';
 import {
   View,
   SafeAreaView,
@@ -13,7 +14,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, onValue  } from 'firebase/database';
+import { getDatabase, ref, set, get, onValue } from 'firebase/database';
 import Firework from './firework';
 
 import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID } from '@env';
@@ -80,14 +81,14 @@ const DismissKeyboard = ({ children }) => (
   </TouchableWithoutFeedback>
 );
 
-let dimension = {width: 0, height: 0};
+let dimension = { width: 0, height: 0 };
 const Mastermind = () => {
   const currentAreaRef = useRef(null);
   useEffect(() => {
     if (currentAreaRef.current) {
-        currentAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
-          dimension = { width, height };
-        });
+      currentAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
+        dimension = { width, height };
+      });
     }
   }, []);
   const fireworkRef = useRef(); // Create a ref to control the Firework component
@@ -193,57 +194,29 @@ const Mastermind = () => {
     }
   };
 
-  const handleInputChange = (index, value) => {
-    if (isNaN(value) || value === '') return;
-    const newGrid = [...grid];
-    newGrid[activeRow][index] = value;
-    setGrid(newGrid);
+  const [isPickerVisible, setPickerVisible] = useState(false);
+  const [selectedCell, setSelectedCell] = useState({ rowIndex: null, cellIndex: null });
 
-    if (newGrid[activeRow].every((cell) => cell !== '')) {
-      checkRow(activeRow);
-
-      setTimeout(() => {
-        const nextRow = activeRow + 1;
-        if (nextRow <= 10) {
-          const nextCell = cellRefs.current[nextRow][0].current;
-          if (nextCell) {
-            nextCell.focus();
-          }
-        }
-      }, 0);
-    } else {
-      setTimeout(() => {
-        for(let i = 0; i < 5; i++) {
-          let newIndex = (index + i) % 5;
-          if(newGrid[activeRow][newIndex] === '') {
-            const nextCell = cellRefs.current[activeRow][newIndex].current;
-            if (nextCell) {
-              nextCell.focus();
-            }
-            break;
-          }
-        }
-      }, 0);
+  const handleCellPress = (rowIndex, cellIndex) => {
+    if (rowIndex === activeRow) {
+      setSelectedCell({ rowIndex, cellIndex });
+      setPickerVisible(true);
     }
   };
 
-  const handleKeyPress = (e, rowIndex, cellIndex) => {
-    if (e.nativeEvent.key === 'Backspace') {
-      const newGrid = [...grid];
-      if (newGrid[rowIndex][cellIndex] !== '') {
-        newGrid[rowIndex][cellIndex] = '';
-        setGrid(newGrid);
-      } else if (cellIndex > 0 && newGrid[rowIndex][cellIndex - 1] !== '') {
-        newGrid[rowIndex][cellIndex - 1] = '';
-        setGrid(newGrid);
+  const handleNumberSelect = (number) => {
+    const { rowIndex, cellIndex } = selectedCell;
+    if (number === ' ') {
+      // Clear the cell if 'b' is selected
+      grid[rowIndex][cellIndex] = '';
+    } else {
+      // Update the cell with the selected number
+      grid[rowIndex][cellIndex] = number;
+    }
+    setGrid([...grid]); // Update the state to reflect changes
 
-        setTimeout(() => {
-          const prevCell = cellRefs.current[rowIndex][cellIndex - 1].current;
-          if (prevCell) {
-            prevCell.focus();
-          }
-        }, 0);
-      }
+    if (grid[activeRow].every((cell) => cell !== '')) {
+      checkRow(activeRow);
     }
   };
 
@@ -263,16 +236,14 @@ const Mastermind = () => {
             ]}
             value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
             keyboardType="numeric"
-            onChangeText={(text) => handleInputChange(index, text)}
-            editable={rowIndex === activeRow && rowIndex !== 0}
-            maxLength={1}
+            onPressIn={() => (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {}}
+            editable={false}
             ref={cellRefs.current[rowIndex][index]}
-            onKeyPress={(e) => handleKeyPress(e, rowIndex, index)}
           />
         ))}
 
         {rowIndex > 0 && (
-            <TextInput
+          <TextInput
             key={grid[rowIndex].length}
             style={[
               styles.cell,
@@ -287,8 +258,8 @@ const Mastermind = () => {
         )}
 
         {rowIndex > 0 && (
-            <TextInput
-            key={grid[rowIndex].length+1}
+          <TextInput
+            key={grid[rowIndex].length + 1}
             style={[
               styles.cell,
               {
@@ -320,8 +291,14 @@ const Mastermind = () => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        <NumberPicker
+          visible={isPickerVisible}
+          onClose={() => setPickerVisible(false)}
+          onSelect={handleNumberSelect}
+        />
       </View>
     </DismissKeyboard>
+
   );
 
 };
@@ -400,7 +377,7 @@ const styles = StyleSheet.create({
 
     // Font shadow properties
     ...(shouldAddFontShadow ? {
-        textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
+      textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
       textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
       textShadowRadius: 2, // Blur radius
     } : {}),
