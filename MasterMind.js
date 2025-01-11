@@ -7,7 +7,6 @@ import {
   SafeAreaView,
   Alert,
   StyleSheet,
-  Text,
   TextInput,
   KeyboardAvoidingView,
   ScrollView,
@@ -15,68 +14,9 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, onValue } from 'firebase/database';
 import Firework from './firework';
 
-import { FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_STORAGE_BUCKET, FIREBASE_GCM_SENDER_ID, FIREBASE_APP_ID } from '@env';
-
-
-// Initialize Firebase
-const firebaseConfig = {
-  apiKey: FIREBASE_API_KEY,
-  authDomain: FIREBASE_AUTH_DOMAIN,
-  projectId: FIREBASE_PROJECT_ID,
-  storageBucket: FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: FIREBASE_GCM_SENDER_ID,
-  appId: FIREBASE_APP_ID,
-};
-
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const checkConnection = () => {
-  const connectedRef = ref(db, '.info/connected');
-  onValue(connectedRef, (snapshot) => {
-    const isConnected = snapshot.val();
-    if (isConnected) {
-      console.log('Connected to Firebase Realtime Database');
-    } else {
-      console.log('Not connected to Firebase Realtime Database');
-    }
-  });
-};
-
-const writeData = async () => {
-  try {
-    const userRef = ref(db, 'users/1');
-    await set(userRef, {
-      name: 'John Doe',
-      age: 30,
-    });
-    console.log('Data written successfully');
-  } catch (error) {
-    console.error('Error writing to Realtime Database:', error.message);
-    console.log('Stack Trace:', error.stack);
-  }
-};
-
-const readData = async () => {
-  try {
-    const userRef = ref(db, 'users/1');
-    const snapshot = await get(userRef);
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      console.log(data);
-    } else {
-      console.log('No data available');
-    }
-  } catch (error) {
-    console.error('Error reading from Realtime Database:', error.message);
-    console.log('Stack Trace:', error.stack);
-  }
-};
 
 const DismissKeyboard = ({ children }) => (
   <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -113,16 +53,6 @@ const Mastermind = ({ columns, autoPopup }) => {
       setIsGameStarted(true);
     }
   }, [isGameStarted]);
-  useEffect(() => {
-    //checkConnection();
-    const fetchData = async () => {
-      // Write and then read data sequentially
-      await writeData();
-      await readData();
-    };
-
-    //fetchData();
-  }, []);
 
   useEffect(() => {
     if (isGameStarted) return;
@@ -201,7 +131,6 @@ const Mastermind = ({ columns, autoPopup }) => {
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
 
   const handleCellPress = (rowIndex, cellIndex) => {
-    console.log('Cell pressed:', rowIndex, cellIndex);
     setSelectedCell({ rowIndex, cellIndex });
     const cellRef = cellRefs.current[rowIndex][cellIndex]; // Access the correct cell ref
     if (cellRef && cellRef.measure) {
@@ -267,7 +196,7 @@ const Mastermind = ({ columns, autoPopup }) => {
             ]}
             value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
             keyboardType="numeric"
-            onPress={() => { console.log('1'); return (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {} }}
+            onPress={() => (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {} }
             editable={false}
             ref={(ref) => (cellRefs.current[rowIndex][index] = ref)}
           />
@@ -308,7 +237,6 @@ const Mastermind = ({ columns, autoPopup }) => {
   };
 
   const closeNumberPicker = (reOpen) => {
-    console.log('Closing number picker', reOpen);
     setPickerVisible(false);
     if (autoPopup && reOpen) {
       const startIndex = (selectedCell.cellIndex + 1) % columns; // Start from the next cell, wrap around at the end
@@ -329,9 +257,6 @@ const Mastermind = ({ columns, autoPopup }) => {
     <DismissKeyboard>
       <Pressable
         style={{ flex: 1, pointerEvents: 'auto' }}
-        onPress={(e) => {
-          console.log('Touch detected in MasterMind:', e.nativeEvent);
-        }}
       >
         <View style={{ flex: 1 }} ref={currentAreaRef}>
           <Firework ref={fireworkRef} />

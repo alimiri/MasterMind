@@ -7,8 +7,7 @@ const NumberPicker = ({ visible, onSelect, onClose, position }) => {
     const handleBackgroundPress = (e) => {
         const modalNode = findNodeHandle(modalRef.current);
         if (modalNode) {
-            console.log('modalNode', modalNode);
-            //onClose(false);
+            onClose(false);
         }
     };
 
