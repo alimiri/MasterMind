@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import NumberPicker from './NumberPicker';
+import { Dimensions, Pressable } from 'react-native';
+
 import {
   View,
   SafeAreaView,
@@ -30,6 +32,7 @@ const firebaseConfig = {
   appId: FIREBASE_APP_ID,
 };
 
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -82,7 +85,7 @@ const DismissKeyboard = ({ children }) => (
 );
 
 let dimension = { width: 0, height: 0 };
-const Mastermind = () => {
+const Mastermind = ({ columns, autoPopup }) => {
   const currentAreaRef = useRef(null);
   useEffect(() => {
     if (currentAreaRef.current) {
@@ -94,18 +97,18 @@ const Mastermind = () => {
   const fireworkRef = useRef(); // Create a ref to control the Firework component
 
   const [activeRow, setActiveRow] = useState(1);
-  const [grid, setGrid] = useState(Array(11).fill().map(() => Array(5).fill('')));
+  const [grid, setGrid] = useState(Array(11).fill().map(() => Array(columns).fill('')));
   const [feedback, setFeedback] = useState(Array(11).fill({ correct: undefined, exact: undefined }));
   const [target, setTarget] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isDigitsRevealed, setIsDigitsRevealed] = useState(false);
   const [cellBackgroundColor, setCellBackgroundColor] = useState('#FFB6C1'); // Default color
 
-  const cellRefs = useRef(Array(11).fill().map(() => Array(5).fill().map(() => React.createRef())));
+  const cellRefs = useRef(Array(11).fill().map(() => Array(columns).fill().map(() => React.createRef())));
 
   useEffect(() => {
     if (!isGameStarted) {
-      const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
+      const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * 10).toString());
       setTarget(generateTarget);
       setIsGameStarted(true);
     }
@@ -119,14 +122,12 @@ const Mastermind = () => {
     };
 
     //fetchData();
-  }, []); // Empty dependency array ensures this only runs once after the component mounts
-
-
+  }, []);
 
   useEffect(() => {
     if (isGameStarted) return;
 
-    const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
+    const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * 10).toString());
     setTarget(generateTarget);
     setIsGameStarted(true);
   }, [isGameStarted]);
@@ -135,8 +136,8 @@ const Mastermind = () => {
     const row = grid[rowIndex];
     let exact = 0;
     let correct = 0;
-    const targetUsed = Array(5).fill(false);
-    const rowUsed = Array(5).fill(false);
+    const targetUsed = Array(columns).fill(false);
+    const rowUsed = Array(columns).fill(false);
 
     row.forEach((val, i) => {
       if (val === target[i]) {
@@ -148,7 +149,7 @@ const Mastermind = () => {
 
     row.forEach((val, i) => {
       if (!rowUsed[i]) {
-        for (let j = 0; j < 5; j++) {
+        for (let j = 0; j < columns; j++) {
           if (!targetUsed[j] && val === target[j]) {
             correct++;
             targetUsed[j] = true;
@@ -164,7 +165,7 @@ const Mastermind = () => {
       return updatedFeedback;
     });
 
-    if (exact === 5) {
+    if (exact === columns) {
       setIsDigitsRevealed(true);
       fireworkRef.current.setShowFireworks(true);
       Alert.alert('Congratulations, you won!', 'Click OK to start a new game.', [
@@ -180,31 +181,56 @@ const Mastermind = () => {
     }
   };
 
+  useEffect(() => {
+    startNewGame();
+  }, [columns]);
+
   const startNewGame = () => {
     fireworkRef.current.setShowFireworks(false);
-    const generateTarget = Array.from({ length: 5 }, () => Math.floor(Math.random() * 10).toString());
+    const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * 10).toString());
     setTarget(generateTarget);
-    setGrid(Array(11).fill().map(() => Array(5).fill('')));
+    setGrid(Array(11).fill().map(() => Array(columns).fill('')));
     setFeedback(Array(11).fill({ correct: undefined, exact: undefined }));
     setIsDigitsRevealed(false);
     setActiveRow(1);
-    const firstCell = cellRefs.current[1][0].current;
-    if (firstCell) {
-      firstCell.focus();
-    }
+    setSelectedCell({ rowIndex: null, cellIndex: null });
   };
 
   const [isPickerVisible, setPickerVisible] = useState(false);
   const [selectedCell, setSelectedCell] = useState({ rowIndex: null, cellIndex: null });
+  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
 
   const handleCellPress = (rowIndex, cellIndex) => {
-    if (rowIndex === activeRow) {
-      setSelectedCell({ rowIndex, cellIndex });
-      setPickerVisible(true);
+    console.log('Cell pressed:', rowIndex, cellIndex);
+    setSelectedCell({ rowIndex, cellIndex });
+    const cellRef = cellRefs.current[rowIndex][cellIndex]; // Access the correct cell ref
+    if (cellRef && cellRef.measure) {
+      cellRef.measure((fx, fy, width, height, px, py) => {
+        let popupLeft = px + width / 2 - 110; // Center popup horizontally
+        let popupTop = py + height; // Position popup below the cell
+
+        // Adjust if popup goes off-screen horizontally
+        if (popupLeft < 0) {
+          popupLeft = 10; // Add padding from the left edge
+        } else if (popupLeft + 220 > screenWidth) { // 220 is the popup width
+          popupLeft = screenWidth - 220 - 10; // Add padding from the right edge
+        }
+
+        // Adjust if popup goes off-screen vertically
+        if (popupTop + 180 > screenHeight) { // 180 is the popup height
+          popupTop = py - 180 - 10; // Position above the cell with padding
+        }
+
+        setPopupPosition({ top: popupTop, left: popupLeft });
+        setPickerVisible(true);
+      });
     }
   };
 
   const handleNumberSelect = (number) => {
+    if (number === 'X') {
+      return;
+    }
     const { rowIndex, cellIndex } = selectedCell;
     if (number === ' ') {
       // Clear the cell if 'b' is selected
@@ -231,14 +257,19 @@ const Mastermind = () => {
               styles.cell,
               {
                 height: cellHeight,
-                backgroundColor: rowIndex === 0 ? '#3CB371' : cellBackgroundColor,
+                backgroundColor:
+                  rowIndex === selectedCell.rowIndex && index === selectedCell.cellIndex
+                    ? 'rgba(127, 127, 127, 0.5)' // Set to gray with transparency
+                    : rowIndex === 0
+                      ? '#3CB371'
+                      : cellBackgroundColor,
               },
             ]}
             value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
             keyboardType="numeric"
-            onPressIn={() => (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {}}
+            onPress={() => { console.log('1'); return (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {} }}
             editable={false}
-            ref={cellRefs.current[rowIndex][index]}
+            ref={(ref) => (cellRefs.current[rowIndex][index] = ref)}
           />
         ))}
 
@@ -276,31 +307,55 @@ const Mastermind = () => {
     );
   };
 
+  const closeNumberPicker = (reOpen) => {
+    console.log('Closing number picker', reOpen);
+    setPickerVisible(false);
+    if (autoPopup && reOpen) {
+      const startIndex = (selectedCell.cellIndex + 1) % columns; // Start from the next cell, wrap around at the end
+      for (let i = 0; i < columns; i++) {
+        const index = (startIndex + i) % columns; // Calculate the circular index
+        if (grid[activeRow][index] === '') {
+          setTimeout(() => {
+            setSelectedCell({ rowIndex: activeRow, cellIndex: index });
+            setPickerVisible(true);
+          }, 100);
+          break;
+        }
+      }
+    }
+  };
 
   return (
     <DismissKeyboard>
-      <View style={{ flex: 1 }} ref={currentAreaRef}>
-        <Firework ref={fireworkRef} />
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <View style={styles.innerContainer}>
-              {grid.map((_, rowIndex) => renderRow(rowIndex))}
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-        <NumberPicker
-          visible={isPickerVisible}
-          onClose={() => setPickerVisible(false)}
-          onSelect={handleNumberSelect}
-        />
-      </View>
+      <Pressable
+        style={{ flex: 1, pointerEvents: 'auto' }}
+        onPress={(e) => {
+          console.log('Touch detected in MasterMind:', e.nativeEvent);
+        }}
+      >
+        <View style={{ flex: 1 }} ref={currentAreaRef}>
+          <Firework ref={fireworkRef} />
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+              <View style={styles.innerContainer}>
+                {grid.map((_, rowIndex) => renderRow(rowIndex))}
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+          {/* Adjust NumberPicker */}
+          <NumberPicker
+            visible={isPickerVisible}
+            onClose={closeNumberPicker}
+            onSelect={handleNumberSelect}
+            position={popupPosition}
+          />
+        </View>
+      </Pressable>
     </DismissKeyboard>
-
   );
-
 };
 
 const outerContainerBackgroundCoor = '#ff0000';
@@ -384,10 +439,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default () => (
+export default ({ columns, autoPopup }) => (
   <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
-      <Mastermind />
+      <Mastermind columns={columns} autoPopup={autoPopup} />
     </View>
   </SafeAreaView>
 );

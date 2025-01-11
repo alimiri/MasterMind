@@ -12,7 +12,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kiansolutions.mastermind"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,6 +24,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "cde6dd0f-12e0-48ed-8272-96eccaea1b2e"
+      }
+    }
   }
 }

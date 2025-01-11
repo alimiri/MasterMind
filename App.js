@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -19,8 +19,6 @@ const TabBarIcon = ({ route, focused, size }) => {
     settings: 'cog',
   };
 
-  const height = useSharedValue(focused ? 60 : 50); // Increase height dynamically
-
   const animatedStyle = useAnimatedStyle(() => {
     return {
       height: withTiming(focused ? 60 : 50, { duration: 300 }),
@@ -40,8 +38,18 @@ const TabBarIcon = ({ route, focused, size }) => {
   );
 };
 
-
 const App = () => {
+  const [columns, setColumns] = useState(4); // Default number of columns
+  const [autoPopup, setAutoPopup] = useState(true); // Auto-popup behavior
+
+  const handleColumnsChange = (value) => {
+    setColumns(value);
+  };
+
+  const handleAutoPopupChange = (value) => {
+    setAutoPopup(value);
+  };
+
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -59,9 +67,22 @@ const App = () => {
           },
         })}
       >
-        <Tab.Screen name="Home" component={MasterMind} />
+        <Tab.Screen name="Home">
+          {() => (
+            <MasterMind columns={columns} autoPopup={autoPopup} />
+          )}
+        </Tab.Screen>
         <Tab.Screen name="Help" component={Help} />
-        <Tab.Screen name="Settings" component={Settings} />
+        <Tab.Screen name="Settings">
+          {() => (
+            <Settings
+              onColumnsChange={handleColumnsChange}
+              onAutoPopupChange={handleAutoPopupChange}
+              columns={columns}
+              autoPopup={autoPopup}
+            />
+          )}
+        </Tab.Screen>
       </Tab.Navigator>
     </NavigationContainer>
   );
