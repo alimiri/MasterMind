@@ -29,9 +29,9 @@ const Mastermind = ({ columns, autoPopup }) => {
   const currentAreaRef = useRef(null);
   useEffect(() => {
     if (currentAreaRef.current) {
-      currentAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
-        dimension = { width, height };
-      });
+        currentAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
+          dimension = { width, height };
+        });
     }
   }, []);
   const fireworkRef = useRef(); // Create a ref to control the Firework component
@@ -126,52 +126,57 @@ const Mastermind = ({ columns, autoPopup }) => {
     setSelectedCell({ rowIndex: null, cellIndex: null });
   };
 
-  const [isPickerVisible, setPickerVisible] = useState(false);
-  const [selectedCell, setSelectedCell] = useState({ rowIndex: null, cellIndex: null });
-  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
+  const handleInputChange = (index, value) => {
+    if (isNaN(value) || value === '') return;
+    const newGrid = [...grid];
+    newGrid[activeRow][index] = value;
+    setGrid(newGrid);
 
-  const handleCellPress = (rowIndex, cellIndex) => {
-    setSelectedCell({ rowIndex, cellIndex });
-    const cellRef = cellRefs.current[rowIndex][cellIndex]; // Access the correct cell ref
-    if (cellRef && cellRef.measure) {
-      cellRef.measure((fx, fy, width, height, px, py) => {
-        let popupLeft = px + width / 2 - 110; // Center popup horizontally
-        let popupTop = py + height; // Position popup below the cell
+    if (newGrid[activeRow].every((cell) => cell !== '')) {
+      checkRow(activeRow);
 
-        // Adjust if popup goes off-screen horizontally
-        if (popupLeft < 0) {
-          popupLeft = 10; // Add padding from the left edge
-        } else if (popupLeft + 220 > screenWidth) { // 220 is the popup width
-          popupLeft = screenWidth - 220 - 10; // Add padding from the right edge
+      setTimeout(() => {
+        const nextRow = activeRow + 1;
+        if (nextRow <= 10) {
+          const nextCell = cellRefs.current[nextRow][0].current;
+          if (nextCell) {
+            nextCell.focus();
+          }
         }
-
-        // Adjust if popup goes off-screen vertically
-        if (popupTop + 180 > screenHeight) { // 180 is the popup height
-          popupTop = py - 180 - 10; // Position above the cell with padding
+      }, 0);
+    } else {
+      setTimeout(() => {
+        for(let i = 0; i < 5; i++) {
+          let newIndex = (index + i) % 5;
+          if(newGrid[activeRow][newIndex] === '') {
+            const nextCell = cellRefs.current[activeRow][newIndex].current;
+            if (nextCell) {
+              nextCell.focus();
+            }
+            break;
+          }
         }
-
-        setPopupPosition({ top: popupTop, left: popupLeft });
-        setPickerVisible(true);
-      });
+      }, 0);
     }
   };
 
-  const handleNumberSelect = (number) => {
-    if (number === 'X') {
-      return;
-    }
-    const { rowIndex, cellIndex } = selectedCell;
-    if (number === ' ') {
-      // Clear the cell if 'b' is selected
-      grid[rowIndex][cellIndex] = '';
-    } else {
-      // Update the cell with the selected number
-      grid[rowIndex][cellIndex] = number;
-    }
-    setGrid([...grid]); // Update the state to reflect changes
+  const handleKeyPress = (e, rowIndex, cellIndex) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      const newGrid = [...grid];
+      if (newGrid[rowIndex][cellIndex] !== '') {
+        newGrid[rowIndex][cellIndex] = '';
+        setGrid(newGrid);
+      } else if (cellIndex > 0 && newGrid[rowIndex][cellIndex - 1] !== '') {
+        newGrid[rowIndex][cellIndex - 1] = '';
+        setGrid(newGrid);
 
-    if (grid[activeRow].every((cell) => cell !== '')) {
-      checkRow(activeRow);
+        setTimeout(() => {
+          const prevCell = cellRefs.current[rowIndex][cellIndex - 1].current;
+          if (prevCell) {
+            prevCell.focus();
+          }
+        }, 0);
+      }
     }
   };
 
@@ -196,14 +201,16 @@ const Mastermind = ({ columns, autoPopup }) => {
             ]}
             value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
             keyboardType="numeric"
-            onPress={() => (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {} }
-            editable={false}
-            ref={(ref) => (cellRefs.current[rowIndex][index] = ref)}
+            onChangeText={(text) => handleInputChange(index, text)}
+            editable={rowIndex === activeRow && rowIndex !== 0}
+            maxLength={1}
+            ref={cellRefs.current[rowIndex][index]}
+            onKeyPress={(e) => handleKeyPress(e, rowIndex, index)}
           />
         ))}
 
         {rowIndex > 0 && (
-          <TextInput
+            <TextInput
             key={grid[rowIndex].length}
             style={[
               styles.cell,
@@ -218,8 +225,8 @@ const Mastermind = ({ columns, autoPopup }) => {
         )}
 
         {rowIndex > 0 && (
-          <TextInput
-            key={grid[rowIndex].length + 1}
+            <TextInput
+            key={grid[rowIndex].length+1}
             style={[
               styles.cell,
               {
@@ -255,30 +262,19 @@ const Mastermind = ({ columns, autoPopup }) => {
 
   return (
     <DismissKeyboard>
-      <Pressable
-        style={{ flex: 1, pointerEvents: 'auto' }}
-      >
-        <View style={{ flex: 1 }} ref={currentAreaRef}>
-          <Firework ref={fireworkRef} />
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-              <View style={styles.innerContainer}>
-                {grid.map((_, rowIndex) => renderRow(rowIndex))}
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-          {/* Adjust NumberPicker */}
-          <NumberPicker
-            visible={isPickerVisible}
-            onClose={closeNumberPicker}
-            onSelect={handleNumberSelect}
-            position={popupPosition}
-          />
-        </View>
-      </Pressable>
+      <View style={{ flex: 1 }} ref={currentAreaRef}>
+        <Firework ref={fireworkRef} />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <View style={styles.innerContainer}>
+              {grid.map((_, rowIndex) => renderRow(rowIndex))}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
     </DismissKeyboard>
   );
 };
@@ -357,7 +353,7 @@ const styles = StyleSheet.create({
 
     // Font shadow properties
     ...(shouldAddFontShadow ? {
-      textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
+        textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
       textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
       textShadowRadius: 2, // Blur radius
     } : {}),
