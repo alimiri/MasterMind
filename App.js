@@ -5,6 +5,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import MasterMind from './MasterMind';
+import Help from './Help';
+import Settings from './Settings';
 
 const Tab = createBottomTabNavigator();
 
@@ -37,7 +39,7 @@ const TabBarIcon = ({ route, focused, size }) => {
 };
 
 const App = () => {
-  const [columns, setColumns] = useState(4); // Default number of columns
+  const [columns, setColumns] = useState(5); // Default number of columns
   const [autoPopup, setAutoPopup] = useState(true); // Auto-popup behavior
 
   const handleColumnsChange = (value) => {

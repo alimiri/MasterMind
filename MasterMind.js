@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import NumberPicker from './NumberPicker';
 import { Dimensions, Pressable } from 'react-native';
 
 import {
@@ -29,12 +28,26 @@ const Mastermind = ({ columns, autoPopup }) => {
   const currentAreaRef = useRef(null);
   useEffect(() => {
     if (currentAreaRef.current) {
-        currentAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
-          dimension = { width, height };
-        });
+      currentAreaRef.current.measure((x, y, width, height, pageX, pageY) => {
+        dimension = { width, height };
+      });
     }
   }, []);
   const fireworkRef = useRef(); // Create a ref to control the Firework component
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      // Adjust contentContainerStyle or state if needed
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      // Reset adjustments
+    });
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   const [activeRow, setActiveRow] = useState(1);
   const [grid, setGrid] = useState(Array(11).fill().map(() => Array(columns).fill('')));
@@ -126,6 +139,12 @@ const Mastermind = ({ columns, autoPopup }) => {
     setSelectedCell({ rowIndex: null, cellIndex: null });
   };
 
+  const [selectedCell, setSelectedCell] = useState({ rowIndex: null, cellIndex: null });
+  const handleCellPress = (rowIndex, cellIndex) => {
+    if (rowIndex === activeRow) {
+      setSelectedCell({ rowIndex, cellIndex });
+    }
+  };
   const handleInputChange = (index, value) => {
     if (isNaN(value) || value === '') return;
     const newGrid = [...grid];
@@ -146,9 +165,9 @@ const Mastermind = ({ columns, autoPopup }) => {
       }, 0);
     } else {
       setTimeout(() => {
-        for(let i = 0; i < 5; i++) {
+        for (let i = 0; i < 5; i++) {
           let newIndex = (index + i) % 5;
-          if(newGrid[activeRow][newIndex] === '') {
+          if (newGrid[activeRow][newIndex] === '') {
             const nextCell = cellRefs.current[activeRow][newIndex].current;
             if (nextCell) {
               nextCell.focus();
@@ -201,6 +220,7 @@ const Mastermind = ({ columns, autoPopup }) => {
             ]}
             value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
             keyboardType="numeric"
+            onPressIn={() => (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {}}
             onChangeText={(text) => handleInputChange(index, text)}
             editable={rowIndex === activeRow && rowIndex !== 0}
             maxLength={1}
@@ -210,7 +230,7 @@ const Mastermind = ({ columns, autoPopup }) => {
         ))}
 
         {rowIndex > 0 && (
-            <TextInput
+          <TextInput
             key={grid[rowIndex].length}
             style={[
               styles.cell,
@@ -225,8 +245,8 @@ const Mastermind = ({ columns, autoPopup }) => {
         )}
 
         {rowIndex > 0 && (
-            <TextInput
-            key={grid[rowIndex].length+1}
+          <TextInput
+            key={grid[rowIndex].length + 1}
             style={[
               styles.cell,
               {
@@ -243,32 +263,15 @@ const Mastermind = ({ columns, autoPopup }) => {
     );
   };
 
-  const closeNumberPicker = (reOpen) => {
-    setPickerVisible(false);
-    if (autoPopup && reOpen) {
-      const startIndex = (selectedCell.cellIndex + 1) % columns; // Start from the next cell, wrap around at the end
-      for (let i = 0; i < columns; i++) {
-        const index = (startIndex + i) % columns; // Calculate the circular index
-        if (grid[activeRow][index] === '') {
-          setTimeout(() => {
-            setSelectedCell({ rowIndex: activeRow, cellIndex: index });
-            setPickerVisible(true);
-          }, 100);
-          break;
-        }
-      }
-    }
-  };
-
   return (
     <DismissKeyboard>
       <View style={{ flex: 1 }} ref={currentAreaRef}>
         <Firework ref={fireworkRef} />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView
+            contentContainerStyle={[styles.scrollContainer, { paddingBottom: Platform.OS === 'ios' ? 100 : 0 }]}>
             <View style={styles.innerContainer}>
               {grid.map((_, rowIndex) => renderRow(rowIndex))}
             </View>
@@ -353,7 +356,7 @@ const styles = StyleSheet.create({
 
     // Font shadow properties
     ...(shouldAddFontShadow ? {
-        textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
+      textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
       textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
       textShadowRadius: 2, // Blur radius
     } : {}),
