@@ -7,6 +7,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import MasterMind from './MasterMind';
 import Help from './Help';
 import Settings from './Settings';
+import { enableScreens } from 'react-native-screens';
 
 const Tab = createBottomTabNavigator();
 
@@ -41,6 +42,8 @@ const TabBarIcon = ({ route, focused, size }) => {
 const App = () => {
   const [columns, setColumns] = useState(5); // Default number of columns
   const [autoPopup, setAutoPopup] = useState(true); // Auto-popup behavior
+
+  enableScreens();
 
   const handleColumnsChange = (value) => {
     setColumns(value);
