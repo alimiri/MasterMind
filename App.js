@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -54,40 +55,42 @@ const App = () => {
   };
 
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, size }) => (
-            <TabBarIcon route={route.name} focused={focused} size={size} />
-          ),
-          tabBarStyle: styles.tabBar,
-          tabBarShowLabel: false, // Hide default label
-          tabBarItemStyle: {
-            margin: 0, // Remove margin between tabs
-            padding: 0, // Remove padding between tabs
-            flex: 1, // Ensure each tab takes up equal space
-            justifyContent: 'center', // Center the icon within each tab
-          },
-        })}
-      >
-        <Tab.Screen name="Home">
-          {() => (
-            <MasterMind columns={columns} autoPopup={autoPopup} />
-          )}
-        </Tab.Screen>
-        <Tab.Screen name="Help" component={Help} />
-        <Tab.Screen name="Settings">
-          {() => (
-            <Settings
-              onColumnsChange={handleColumnsChange}
-              onAutoPopupChange={handleAutoPopupChange}
-              columns={columns}
-              autoPopup={autoPopup}
-            />
-          )}
-        </Tab.Screen>
-      </Tab.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            tabBarIcon: ({ focused, size }) => (
+              <TabBarIcon route={route.name} focused={focused} size={size} />
+            ),
+            tabBarStyle: styles.tabBar,
+            tabBarShowLabel: false, // Hide default label
+            tabBarItemStyle: {
+              margin: 0, // Remove margin between tabs
+              padding: 0, // Remove padding between tabs
+              flex: 1, // Ensure each tab takes up equal space
+              justifyContent: 'center', // Center the icon within each tab
+            },
+          })}
+        >
+          <Tab.Screen name="Home">
+            {() => (
+              <MasterMind columns={columns} autoPopup={autoPopup} />
+            )}
+          </Tab.Screen>
+          <Tab.Screen name="Help" component={Help} />
+          <Tab.Screen name="Settings">
+            {() => (
+              <Settings
+                onColumnsChange={handleColumnsChange}
+                onAutoPopupChange={handleAutoPopupChange}
+                columns={columns}
+                autoPopup={autoPopup}
+              />
+            )}
+          </Tab.Screen>
+        </Tab.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 };
 
