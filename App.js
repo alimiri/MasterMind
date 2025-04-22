@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import MasterMind from './MasterMind';
 import Help from './Help';
 import Settings from './Settings';
@@ -15,9 +15,7 @@ const Tab = createBottomTabNavigator();
 const TabBarIcon = ({ route, focused, size }) => {
   const icons = {
     home: 'castle',
-    shop: 'store',
-    trophy: 'trophy',
-    profile: 'shield-account',
+    help: 'help-circle-outline',
     settings: 'cog',
   };
 

@@ -17,14 +17,26 @@ import Firework from './firework';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-const DismissKeyboard = ({ children }) => (
-  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    {children}
-  </TouchableWithoutFeedback>
-);
-
 let dimension = { width: 0, height: 0 };
-const Mastermind = ({ columns, autoPopup }) => {
+export default Mastermind = ({ columns, autoPopup }) => {
+  const getCellWidth = () => {
+    const numCells = columns + 2; // main cells + 'exact' + 'correct'
+
+    const marginPerCell = 8; // marginHorizontal: 4 on each side
+    const borderPerCell = 4; // borderWidth: 2 on each side
+    const extraPerCell = marginPerCell + borderPerCell;
+
+    const totalExtra = numCells * extraPerCell;
+    const safetyBuffer = 40; // padding on both sides of screen
+
+    const availableWidth = screenWidth - totalExtra - safetyBuffer;
+
+    return Math.min(availableWidth / numCells, 50); // max 50px width per cell
+  };
+
+
+  const cellWidth = getCellWidth();
+
   const currentAreaRef = useRef(null);
   useEffect(() => {
     if (currentAreaRef.current) {
@@ -136,17 +148,14 @@ const Mastermind = ({ columns, autoPopup }) => {
     setFeedback(Array(11).fill({ correct: undefined, exact: undefined }));
     setIsDigitsRevealed(false);
     setActiveRow(1);
-    setSelectedCell({ rowIndex: null, cellIndex: null });
+    setTimeout(() => {
+      const nextCell = cellRefs.current[1][0].current;
+      nextCell.focus();
+    }, 0);
   };
 
-  const [selectedCell, setSelectedCell] = useState({ rowIndex: null, cellIndex: null });
-  const handleCellPress = (rowIndex, cellIndex) => {
-    if (rowIndex === activeRow) {
-      setSelectedCell({ rowIndex, cellIndex });
-    }
-  };
   const handleInputChange = (index, value) => {
-    if (isNaN(value) || value === '') return;
+    if (isNaN(value) || value.trim() === '') return;
     const newGrid = [...grid];
     newGrid[activeRow][index] = value;
     setGrid(newGrid);
@@ -165,7 +174,7 @@ const Mastermind = ({ columns, autoPopup }) => {
       }, 0);
     } else {
       setTimeout(() => {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < columns; i++) {
           let newIndex = (index + i) % 5;
           if (newGrid[activeRow][newIndex] === '') {
             const nextCell = cellRefs.current[activeRow][newIndex].current;
@@ -201,6 +210,8 @@ const Mastermind = ({ columns, autoPopup }) => {
 
   const renderRow = (rowIndex) => {
     const cellHeight = dimension.height / 14;
+    const isHeader = rowIndex === 0;
+
     return (
       <View key={rowIndex} style={styles.rowContainer}>
         {grid[rowIndex].map((cell, index) => (
@@ -209,81 +220,95 @@ const Mastermind = ({ columns, autoPopup }) => {
             style={[
               styles.cell,
               {
+                width: cellWidth,
                 height: cellHeight,
                 backgroundColor:
-                  rowIndex === selectedCell.rowIndex && index === selectedCell.cellIndex
-                    ? 'rgba(127, 127, 127, 0.5)' // Set to gray with transparency
-                    : rowIndex === 0
-                      ? '#3CB371'
-                      : cellBackgroundColor,
+                  isHeader
+                    ? '#3CB371'
+                    : cellBackgroundColor,
               },
             ]}
-            value={rowIndex === 0 ? (isDigitsRevealed ? target[index] : '*') : cell}
+            value={
+              isHeader
+                ? isDigitsRevealed
+                  ? target[index]
+                  : '*'
+                : cell
+            }
             keyboardType="numeric"
-            onPressIn={() => (rowIndex === activeRow && rowIndex !== 0) ? handleCellPress(rowIndex, index) : {}}
             onChangeText={(text) => handleInputChange(index, text)}
-            editable={rowIndex === activeRow && rowIndex !== 0}
+            editable={!isHeader && rowIndex === activeRow}
             maxLength={1}
             ref={cellRefs.current[rowIndex][index]}
             onKeyPress={(e) => handleKeyPress(e, rowIndex, index)}
           />
         ))}
 
-        {rowIndex > 0 && (
-          <TextInput
-            key={grid[rowIndex].length}
-            style={[
-              styles.cell,
-              {
-                height: cellHeight,
-                backgroundColor: exactBackgroundColor,
-              },
-            ]}
-            value={feedback[rowIndex].exact !== undefined ? String(feedback[rowIndex].exact) : ''}
-            editable={false}
-          />
-        )}
+        {/* Extra columns */}
+        <TextInput
+          key="exact"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[
+            styles.cell,
+            {
+              fontSize: isHeader ? 8 : 20,
+              width: cellWidth,
+              height: cellHeight,
+              backgroundColor: isHeader ? '#90EE90' : exactBackgroundColor,
+            },
+          ]}
+          value={isHeader ? 'Exact' : feedback[rowIndex].exact !== undefined ? String(feedback[rowIndex].exact) : ''}
+          editable={false}
+        />
 
-        {rowIndex > 0 && (
-          <TextInput
-            key={grid[rowIndex].length + 1}
-            style={[
-              styles.cell,
-              {
-                height: cellHeight,
-                backgroundColor: correctBackgroundColor,
-              },
-            ]}
-            value={feedback[rowIndex].correct !== undefined ? String(feedback[rowIndex].correct) : ''}
-            editable={false}
-          />
-        )}
-
+        <TextInput
+          key="correct"
+          style={[
+            styles.cell,
+            {
+              fontSize: isHeader ? 8 : 20,
+              width: cellWidth,
+              height: cellHeight,
+              backgroundColor: isHeader ? '#FFFF99' : correctBackgroundColor,
+            },
+          ]}
+          value={isHeader ? 'Correct' : feedback[rowIndex].correct !== undefined ? String(feedback[rowIndex].correct) : ''}
+          editable={false}
+        />
       </View>
     );
   };
 
   return (
-    <DismissKeyboard>
-      <View style={{ flex: 1 }} ref={currentAreaRef}>
-        <Firework ref={fireworkRef} />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <ScrollView
-            contentContainerStyle={[styles.scrollContainer, { paddingBottom: Platform.OS === 'ios' ? 100 : 0 }]}>
-            <View style={styles.innerContainer}>
-              {grid.map((_, rowIndex) => renderRow(rowIndex))}
-            </View>
-          </ScrollView>
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <ScrollView
+              contentContainerStyle={[styles.scrollContainer, { flexGrow: 1 }]}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={{ flex: 1 }} ref={currentAreaRef}>
+                <Firework ref={fireworkRef} />
+                <View style={styles.innerContainer}>
+                  {grid.map((_, rowIndex) => renderRow(rowIndex))}
+                </View>
+              </View>
+            </ScrollView>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
-    </DismissKeyboard>
+    </SafeAreaView>
   );
 };
 
-const outerContainerBackgroundCoor = '#ff0000';
-const innerContainerBackgroundCoor = '#e0f7e0';
+const outerContainerBackgroundCoor = '#ffcccc'; // Light red-pink
+const innerContainerBackgroundCoor = '#e0f7e0'; // Soft green
 const exactBackgroundColor = '#00ff00';
 const correctBackgroundColor = '#ffff00';
 const shouldAddCellShadow = true;
@@ -323,50 +348,34 @@ const styles = StyleSheet.create({
   },
   rowContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // Space the columns evenly
-    marginBottom: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    width: '100%', // Ensure the row takes the full width of the container
-    paddingHorizontal: 5, // Adjust padding to prevent cutoff
+    marginBottom: 10,
+    flexWrap: 'nowrap',
   },
   cell: {
+    width: 40,
+    height: 40,
     borderWidth: 2,
     borderColor: '#ccc',
-    padding: 10,
-    flex: 1, // Distribute the columns evenly
     textAlign: 'center',
     fontSize: 20,
     borderRadius: 5,
-    marginHorizontal: 2, // Add space between columns
-    maxWidth: 50, // Ensure max width for each cell
-    // Optional shadow properties (only on iOS and Android)
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5, // Android shadow
-    // Conditionally add shadow (e.g., for focused state)
-    ...(shouldAddCellShadow ? {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.5, // Higher opacity for shadow visibility
-      shadowRadius: 5,
-      elevation: 10 // Stronger shadow on Android
-    } : {}),
-
-    // Font shadow properties
-    ...(shouldAddFontShadow ? {
-      textShadowColor: 'rgba(0, 0, 0, 0.5)', // Shadow color
-      textShadowOffset: { width: 1, height: 1 }, // Offset in pixels
-      textShadowRadius: 2, // Blur radius
-    } : {}),
+    marginHorizontal: 4,
+    backgroundColor: '#fff',
+    ...(
+      shouldAddCellShadow && {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+      }
+    ),
+  },
+  resultText: {
+    fontSize: 14, // starting font size
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
-
-export default ({ columns, autoPopup }) => (
-  <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
-      <Mastermind columns={columns} autoPopup={autoPopup} />
-    </View>
-  </SafeAreaView>
-);
