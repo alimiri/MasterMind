@@ -16,9 +16,12 @@ import {
 import Firework from './firework';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const BASE_FONT_SIZE = 12;
+const MIN_FONT_SIZE = 4;
 
 let dimension = { width: 0, height: 0 };
-export default Mastermind = ({ columns, autoPopup }) => {
+const Mastermind = ({ columns }) => {
+  const totalRows = 11;
   const getCellWidth = () => {
     const numCells = columns + 2; // main cells + 'exact' + 'correct'
 
@@ -34,8 +37,31 @@ export default Mastermind = ({ columns, autoPopup }) => {
     return Math.min(availableWidth / numCells, 50); // max 50px width per cell
   };
 
-
   const cellWidth = getCellWidth();
+  const [exactCorrectFontSize, setExactCorrectFontSize] = useState(10);
+  const textSize = (text, width, height) => {
+    if (text === "Exact" || text === "Correct") {
+      const textLength = text.length || 1;
+      const marginFactor = 0.9; // Allow 90% of width to be used for text
+      const widthAvailable = width * marginFactor;
+      const heightAvailable = height * marginFactor;
+
+      const availableWidthPerChar = widthAvailable / textLength;
+
+      let tentativeFontSize = Math.min(BASE_FONT_SIZE, availableWidthPerChar / 0.6);
+
+      // Adjust based on height too (font height ~ 1.2x font size)
+      tentativeFontSize = Math.min(tentativeFontSize, heightAvailable / 1.2);
+
+      if (tentativeFontSize < MIN_FONT_SIZE) {
+        tentativeFontSize = MIN_FONT_SIZE;
+      }
+
+      console.log('final new font size:', tentativeFontSize);
+      setExactCorrectFontSize(tentativeFontSize);
+    }
+  };
+
 
   const currentAreaRef = useRef(null);
   useEffect(() => {
@@ -62,27 +88,22 @@ export default Mastermind = ({ columns, autoPopup }) => {
   }, []);
 
   const [activeRow, setActiveRow] = useState(1);
-  const [grid, setGrid] = useState(Array(11).fill().map(() => Array(columns).fill('')));
-  const [feedback, setFeedback] = useState(Array(11).fill({ correct: undefined, exact: undefined }));
+  const [grid, setGrid] = useState(Array(totalRows).fill().map(() => Array(columns).fill('')));
+  const [feedback, setFeedback] = useState(Array(totalRows).fill({ correct: undefined, exact: undefined }));
   const [target, setTarget] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isDigitsRevealed, setIsDigitsRevealed] = useState(false);
   const [cellBackgroundColor, setCellBackgroundColor] = useState('#FFB6C1'); // Default color
 
-  const cellRefs = useRef(Array(11).fill().map(() => Array(columns).fill().map(() => React.createRef())));
-
+  const cellRefs = useRef(Array(totalRows).fill().map(() => Array(columns).fill().map(() => React.createRef())));
   useEffect(() => {
-    if (!isGameStarted) {
-      const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * 10).toString());
-      setTarget(generateTarget);
-      setIsGameStarted(true);
-    }
-  }, [isGameStarted]);
+    cellRefs.current = Array(totalRows).fill().map(() => Array(columns).fill().map(() => React.createRef()));
+  }, [columns]);
 
   useEffect(() => {
     if (isGameStarted) return;
 
-    const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * 10).toString());
+    const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * (totalRows - 1)).toString());
     setTarget(generateTarget);
     setIsGameStarted(true);
   }, [isGameStarted]);
@@ -126,7 +147,7 @@ export default Mastermind = ({ columns, autoPopup }) => {
       Alert.alert('Congratulations, you won!', 'Click OK to start a new game.', [
         { text: 'OK', onPress: startNewGame },
       ]);
-    } else if (rowIndex === 10) {
+    } else if (rowIndex === totalRows - 1) {
       setIsDigitsRevealed(true);
       Alert.alert('Game over, you lost!', 'Click OK to start a new game.', [
         { text: 'OK', onPress: startNewGame },
@@ -137,20 +158,21 @@ export default Mastermind = ({ columns, autoPopup }) => {
   };
 
   useEffect(() => {
-    startNewGame();
+    setExactCorrectFontSize(BASE_FONT_SIZE); // Reset when columns change
+    startNewGame(); // you already call startNewGame()
   }, [columns]);
 
   const startNewGame = () => {
     fireworkRef.current.setShowFireworks(false);
-    const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * 10).toString());
+    const generateTarget = Array.from({ length: columns }, () => Math.floor(Math.random() * (totalRows - 1)).toString());
     setTarget(generateTarget);
-    setGrid(Array(11).fill().map(() => Array(columns).fill('')));
-    setFeedback(Array(11).fill({ correct: undefined, exact: undefined }));
+    setGrid(Array(totalRows).fill().map(() => Array(columns).fill('')));
+    setFeedback(Array(totalRows).fill({ correct: undefined, exact: undefined }));
     setIsDigitsRevealed(false);
     setActiveRow(1);
     setTimeout(() => {
       const nextCell = cellRefs.current[1][0].current;
-      nextCell.focus();
+      nextCell?.focus();
     }, 0);
   };
 
@@ -165,21 +187,21 @@ export default Mastermind = ({ columns, autoPopup }) => {
 
       setTimeout(() => {
         const nextRow = activeRow + 1;
-        if (nextRow <= 10) {
+        if (nextRow < totalRows) {
           const nextCell = cellRefs.current[nextRow][0].current;
           if (nextCell) {
-            nextCell.focus();
+            nextCell?.focus();
           }
         }
       }, 0);
     } else {
       setTimeout(() => {
         for (let i = 0; i < columns; i++) {
-          let newIndex = (index + i) % 5;
+          let newIndex = (index + i) % columns;
           if (newGrid[activeRow][newIndex] === '') {
             const nextCell = cellRefs.current[activeRow][newIndex].current;
             if (nextCell) {
-              nextCell.focus();
+              nextCell?.focus();
             }
             break;
           }
@@ -252,13 +274,17 @@ export default Mastermind = ({ columns, autoPopup }) => {
           style={[
             styles.cell,
             {
-              fontSize: isHeader ? 8 : 20,
+              fontSize: isHeader ? exactCorrectFontSize : 20,
               width: cellWidth,
               height: cellHeight,
               backgroundColor: isHeader ? '#90EE90' : exactBackgroundColor,
             },
           ]}
           value={isHeader ? 'Exact' : feedback[rowIndex].exact !== undefined ? String(feedback[rowIndex].exact) : ''}
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            textSize(isHeader ? 'Exact' : feedback[rowIndex].exact !== undefined ? String(feedback[rowIndex].exact) : '', width, height);
+          }}
           editable={false}
         />
 
@@ -267,13 +293,17 @@ export default Mastermind = ({ columns, autoPopup }) => {
           style={[
             styles.cell,
             {
-              fontSize: isHeader ? 8 : 20,
+              fontSize: isHeader ? exactCorrectFontSize : 20,
               width: cellWidth,
               height: cellHeight,
               backgroundColor: isHeader ? '#FFFF99' : correctBackgroundColor,
             },
           ]}
           value={isHeader ? 'Correct' : feedback[rowIndex].correct !== undefined ? String(feedback[rowIndex].correct) : ''}
+          onLayout={(event) => {
+            const { width, height } = event.nativeEvent.layout;
+            textSize(isHeader ? 'Correct' : feedback[rowIndex].correct !== undefined ? String(feedback[rowIndex].correct) : '', width, height);
+          }}
           editable={false}
         />
       </View>
@@ -307,17 +337,16 @@ export default Mastermind = ({ columns, autoPopup }) => {
   );
 };
 
-const outerContainerBackgroundCoor = '#ffcccc'; // Light red-pink
-const innerContainerBackgroundCoor = '#e0f7e0'; // Soft green
+const outerContainerBackgroundColor = '#ffcccc'; // Light red-pink
+const innerContainerBackgroundColor = '#e0f7e0'; // Soft green
 const exactBackgroundColor = '#00ff00';
 const correctBackgroundColor = '#ffff00';
 const shouldAddCellShadow = true;
-const shouldAddFontShadow = true;
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: outerContainerBackgroundCoor,
+    backgroundColor: outerContainerBackgroundColor,
   },
   avoidingView: {
     flex: 1,
@@ -328,7 +357,7 @@ const styles = StyleSheet.create({
     borderWidth: 8,
     borderColor: '#333',
     borderRadius: 15,
-    backgroundColor: innerContainerBackgroundCoor,
+    backgroundColor: innerContainerBackgroundColor,
     margin: 10,
     shadowColor: '#000',
     shadowOffset: { width: 5, height: 5 },
@@ -379,3 +408,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export default Mastermind;

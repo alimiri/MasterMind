@@ -2,19 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch } from 'react-native';
 import Slider from '@react-native-community/slider';
 
-const Settings = ({ onColumnsChange, onAutoPopupChange, columns, autoPopup }) => {
+const Settings = ({ onColumnsChange, columns }) => {
   const handleColumnsChange = (value) => {
     onColumnsChange(value); // Notify parent about the change
   };
 
-  const handleAutoPopupToggle = (value) => {
-    onAutoPopupChange(value);
-  };
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-
       {/* Number of Columns */}
       <View style={styles.settingItem}>
         <Text style={styles.label}>Number of Columns to Guess:</Text>
@@ -27,15 +21,6 @@ const Settings = ({ onColumnsChange, onAutoPopupChange, columns, autoPopup }) =>
           onValueChange={handleColumnsChange}
         />
         <Text style={styles.value}>{columns}</Text>
-      </View>
-
-      {/* Auto Popup Checkbox */}
-      <View style={styles.settingItem}>
-        <Text style={styles.label}>Automatically open for the next cell:</Text>
-        <Switch
-          value={autoPopup}
-          onValueChange={handleAutoPopupToggle}
-        />
       </View>
     </View>
   );

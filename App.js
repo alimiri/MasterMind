@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -9,6 +9,8 @@ import MasterMind from './MasterMind';
 import Help from './Help';
 import Settings from './Settings';
 import { enableScreens } from 'react-native-screens';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import SplashScreen from './SplashScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -39,22 +41,41 @@ const TabBarIcon = ({ route, focused, size }) => {
 };
 
 const App = () => {
-  const [columns, setColumns] = useState(5); // Default number of columns
-  const [autoPopup, setAutoPopup] = useState(true); // Auto-popup behavior
-
   enableScreens();
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
+  const [columns, setColumns] = useState(null);
+  const [isReady, setIsReady] = useState(false);
 
-  const handleColumnsChange = (value) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSplashVisible(false);
+    }, 1500); // 1.5 seconds splash
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const loadColumns = async () => {
+      const storedColumns = await AsyncStorage.getItem("columns");
+      if (storedColumns) {
+        setColumns(parseInt(storedColumns));
+      } else {
+        setColumns(5); // default if nothing is stored
+      }
+      setIsReady(true); // indicate that loading is finished
+    };
+    loadColumns();
+  }, []);
+
+  const handleColumnsChange = async value => {
+    await AsyncStorage.setItem("columns", value.toString());
     setColumns(value);
-  };
-
-  const handleAutoPopupChange = (value) => {
-    setAutoPopup(value);
   };
 
   return (
     <SafeAreaProvider>
       <NavigationContainer>
+      {isReady && !isSplashVisible ? (
         <Tab.Navigator
           screenOptions={({ route }) => ({
             tabBarIcon: ({ focused, size }) => (
@@ -72,7 +93,7 @@ const App = () => {
         >
           <Tab.Screen name="Home">
             {() => (
-              <MasterMind columns={columns} autoPopup={autoPopup} />
+              <MasterMind columns={columns} />
             )}
           </Tab.Screen>
           <Tab.Screen name="Help" component={Help} />
@@ -80,13 +101,15 @@ const App = () => {
             {() => (
               <Settings
                 onColumnsChange={handleColumnsChange}
-                onAutoPopupChange={handleAutoPopupChange}
                 columns={columns}
-                autoPopup={autoPopup}
               />
             )}
           </Tab.Screen>
         </Tab.Navigator>
+        ) : (
+          // You can show a simple loading screen while waiting
+          <SplashScreen />
+        )}
       </NavigationContainer>
     </SafeAreaProvider>
   );
